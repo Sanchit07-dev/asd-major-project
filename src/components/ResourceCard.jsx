@@ -5,7 +5,7 @@ export default function ResourceCard({ resource, subjectName }) {
   return (
     <Link
       to={`/resource/${resource.id}`}
-      className="-mx-2 grid grid-cols-[3.5rem_1fr] gap-4 border-b border-rule px-2 py-5 hover:bg-white"
+      className="-mx-2 grid grid-cols-[3.5rem_1fr] gap-4 border-b border-rule px-2 py-5 transition-colors hover:bg-white"
     >
       <div className="text-right">
         {n > 0 ? (

@@ -3,23 +3,56 @@
 @theme {
   --font-sans: "Bricolage Grotesque", system-ui, sans-serif;
   --font-read: "Literata", Georgia, serif;
-  --color-paper: #f5f6f2;
-  --color-ink: #1b1f2a;
-  --color-mute: #5b6270;
-  --color-rule: #d9dcd3;
-  --color-pen: #2a3fb5;
-  --color-pen-dark: #1f3090;
-  --color-mark: #f7dc4a;
+  --color-paper: #f9f9fb;
+  --color-navy: #1e3a8a;
+  --color-navy-dark: #172e6e;
+  --color-ink: #0f1b3d;
+  --color-mute: #5a6478;
+  --color-rule: #e1e4ee;
+  --color-pen: #1e3a8a;
+  --color-pen-dark: #172e6e;
+  --color-amber: #f59e0b;
+  --color-amber-dark: #d98a06;
 }
 
 @layer base {
   body { @apply bg-paper font-sans text-ink antialiased; }
-  :focus-visible { outline: 2px solid var(--color-pen); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--color-navy); outline-offset: 2px; }
+  header :focus-visible, .band :focus-visible { outline-color: var(--color-amber); }
 }
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes splash-out { to { opacity: 0; visibility: hidden; } }
 
 @layer components {
   .page { @apply mx-auto max-w-5xl px-6 py-10; }
   .field { @apply w-full rounded-md border border-rule bg-white px-3 py-2; }
-  .btn { @apply inline-block rounded-md bg-pen px-4 py-2 font-medium text-white hover:bg-pen-dark disabled:opacity-50; }
-  .mark { background: linear-gradient(transparent 58%, var(--color-mark) 58%); }
+  .btn { @apply inline-block rounded-md bg-amber px-4 py-2 font-semibold text-ink transition hover:bg-amber-dark active:translate-y-px disabled:opacity-50; }
+  .mark { background: linear-gradient(transparent 58%, rgb(245 158 11 / 0.45) 58%); }
+
+  .navlink { position: relative; padding-block: 0.25rem; color: rgb(249 249 251 / 0.75); transition: color 0.2s; }
+  .navlink:hover, .navlink.active { color: #fff; }
+  .navlink::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--color-amber); transform: scaleX(0); transform-origin: left; transition: transform 0.25s ease; }
+  .navlink:hover::after, .navlink.active::after { transform: scaleX(1); }
+
+  .page-enter { animation: rise 0.35s ease both; }
+  .stagger > * { animation: rise 0.4s ease both; }
+  .stagger > :nth-child(2) { animation-delay: 0.05s; }
+  .stagger > :nth-child(3) { animation-delay: 0.1s; }
+  .stagger > :nth-child(4) { animation-delay: 0.15s; }
+  .stagger > :nth-child(5) { animation-delay: 0.2s; }
+  .stagger > :nth-child(6) { animation-delay: 0.25s; }
+  .stagger > :nth-child(n+7) { animation-delay: 0.3s; }
+
+  .skeleton { border-radius: 6px; background: linear-gradient(90deg, #eceef5 25%, #f6f7fb 50%, #eceef5 75%); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
+
+  .splash { position: fixed; inset: 0; z-index: 50; display: grid; place-content: center; gap: 1rem; background: var(--color-navy); color: var(--color-paper); animation: splash-out 0.4s ease 1.1s forwards; }
+  .splash-bar { height: 3px; background: var(--color-amber); transform-origin: left; animation: fill 0.9s ease-out both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; animation-delay: 0s !important; transition-duration: 0.01ms !important; }
+  .splash { display: none; }
 }
