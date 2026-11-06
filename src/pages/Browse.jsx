@@ -45,48 +45,53 @@ export default function Browse() {
   }, [resources, search, subjectId, type, sort])
 
   return (
-    <div className="page">
-      <h1 className="text-3xl font-semibold tracking-tight">
-        {subjectId ? subjectName[subjectId] || 'Resources' : 'All resources'}
-      </h1>
-
-      <div className="mt-6 grid gap-3 md:grid-cols-[1fr_auto_auto_auto]">
-        <input aria-label="Search" placeholder="Search by title or description" value={search} onChange={(e) => setSearch(e.target.value)} className="field" />
-        <select aria-label="Subject" value={subjectId} onChange={(e) => setParams(e.target.value ? { subject: e.target.value } : {})} className="field">
-          <option value="">All subjects</option>
-          {semesters.map((sem) => (
-            <optgroup key={sem} label={`Semester ${sem}`}>
-              {subjects.filter((s) => s.semester === sem).map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+    <>
+      <section className="band bg-navy text-paper">
+        <div className="mx-auto max-w-5xl px-6 pb-8 pt-4">
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {subjectId ? subjectName[subjectId] || 'Resources' : 'All resources'}
+          </h1>
+          <div className="mt-5 grid gap-3 text-ink md:grid-cols-[1fr_auto_auto_auto]">
+            <input aria-label="Search" placeholder="Search by title or description" value={search} onChange={(e) => setSearch(e.target.value)} className="field" />
+            <select aria-label="Subject" value={subjectId} onChange={(e) => setParams(e.target.value ? { subject: e.target.value } : {})} className="field">
+              <option value="">All subjects</option>
+              {semesters.map((sem) => (
+                <optgroup key={sem} label={`Semester ${sem}`}>
+                  {subjects.filter((s) => s.semester === sem).map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </optgroup>
               ))}
-            </optgroup>
-          ))}
-        </select>
-        <select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)} className="field">
-          <option value="">All types</option>
-          {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-        <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)} className="field">
-          <option value="rating">Top rated</option>
-          <option value="newest">Newest</option>
-        </select>
-      </div>
+            </select>
+            <select aria-label="Type" value={type} onChange={(e) => setType(e.target.value)} className="field">
+              <option value="">All types</option>
+              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value)} className="field">
+              <option value="rating">Top rated</option>
+              <option value="newest">Newest</option>
+            </select>
+          </div>
+        </div>
+      </section>
 
-      <p className="mt-8 text-sm text-mute">
-        {visible.length} {visible.length === 1 ? 'resource' : 'resources'}
-      </p>
-      <div className="mt-2 border-t border-ink">
-        {loading && <p className="py-6 text-mute">Loading...</p>}
-        {error && <p role="alert" className="py-6 text-red-700">{error}</p>}
-        {!loading && !error && visible.length === 0 && (
-          <p className="py-6">
-            Nothing matches yet. <Link to="/add" className="text-pen underline underline-offset-4">Add the first resource</Link> for this subject.
-          </p>
-        )}
-        {visible.map((r) => (
-          <ResourceCard key={r.id} resource={r} subjectName={subjectName[r.subject_id]} />
-        ))}
+      <div className="page">
+        <p className="text-sm text-mute">
+          {visible.length} {visible.length === 1 ? 'resource' : 'resources'}
+        </p>
+        <div className="stagger mt-2 border-t border-navy">
+          {loading && [0, 1, 2, 3].map((i) => <div key={i} className="skeleton my-4 h-20" />)}
+          {error && <p role="alert" className="py-6 text-red-700">{error}</p>}
+          {!loading && !error && visible.length === 0 && (
+            <p className="py-6">
+              Nothing matches yet. <Link to="/add" className="text-pen underline underline-offset-4">Add the first resource</Link> for this subject.
+            </p>
+          )}
+          {visible.map((r) => (
+            <ResourceCard key={r.id} resource={r} subjectName={subjectName[r.subject_id]} />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
