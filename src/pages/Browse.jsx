@@ -11,8 +11,8 @@ export default function Browse() {
   const [subjects, setSubjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
-  const [type, setType] = useState('')
+  const [search, setSearch] = useState(params.get('q') || '')
+  const [type, setType] = useState(params.get('type') || '')
   const [sort, setSort] = useState('rating')
   const subjectId = params.get('subject') || ''
 
