@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Field from '../components/Field'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -21,35 +22,20 @@ export default function Login() {
   }
 
   return (
-    <div className="max-w-sm mx-auto mt-16 p-6 rounded-xl bg-slate-800 text-white">
-      <h1 className="text-2xl font-bold mb-4">Log in</h1>
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <input
-          type="email"
-          required
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-2 rounded bg-slate-700 outline-none"
-        />
-        <input
-          type="password"
-          required
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 rounded bg-slate-700 outline-none"
-        />
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button
-          disabled={busy}
-          className="w-full p-2 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50"
-        >
-          {busy ? 'Logging in...' : 'Log in'}
-        </button>
+    <div className="mx-auto max-w-md px-6 py-14">
+      <h1 className="text-3xl font-semibold tracking-tight">Log in</h1>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <Field label="Email">
+          <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="field" />
+        </Field>
+        <Field label="Password">
+          <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="field" />
+        </Field>
+        {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+        <button disabled={busy} className="btn">{busy ? 'Logging in...' : 'Log in'}</button>
       </form>
-      <p className="mt-4 text-sm text-slate-300">
-        No account? <Link to="/signup" className="underline">Sign up</Link>
+      <p className="mt-6 text-mute">
+        New here? <Link to="/signup" className="text-pen underline underline-offset-4">Create an account</Link>
       </p>
     </div>
   )
