@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-read: "Literata", Georgia, serif;
+  --color-paper: #f5f6f2;
+  --color-ink: #1b1f2a;
+  --color-mute: #5b6270;
+  --color-rule: #d9dcd3;
+  --color-pen: #2a3fb5;
+  --color-pen-dark: #1f3090;
+  --color-mark: #f7dc4a;
+}
+
+@layer base {
+  body { @apply bg-paper font-sans text-ink antialiased; }
+  :focus-visible { outline: 2px solid var(--color-pen); outline-offset: 2px; }
+}
+
+@layer components {
+  .page { @apply mx-auto max-w-5xl px-6 py-10; }
+  .field { @apply w-full rounded-md border border-rule bg-white px-3 py-2; }
+  .btn { @apply inline-block rounded-md bg-pen px-4 py-2 font-medium text-white hover:bg-pen-dark disabled:opacity-50; }
+  .mark { background: linear-gradient(transparent 58%, var(--color-mark) 58%); }
+}
