@@ -1,16 +1,81 @@
-# React + Vite
+# NST Learning Hub (Full-stack Starter)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Overview
+A **React + Vite** frontend styled with **Tailwind CSS** and an **Express** backend with **PostgreSQL** and **JWT** authentication.
 
-Currently, two official plugins are available:
+## Project layout
+```
+/frontend          – React app (Vite)
+  src/
+  tailwind.config.cjs
+/backend           – Express server
+  src/
+    index.js      – Server entry point (CORS, JSON, health‑check)
+    auth.js       – Signup / login routes + JWT middleware
+  .env.example    – Env‑var template
+README.md
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Getting started
 
-## React Compiler
+### Prerequisites
+- Node ≥ 20
+- npm (or yarn)
+- PostgreSQL instance (local or remote)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Setup
+```bash
+# Clone the repo
+git clone https://github.com/Sanchit07-dev/asd-major-project.git
+cd asd-major-project
 
-## Expanding the Oxlint configuration
+# Frontend
+cd frontend
+npm install
+npm run dev   # http://localhost:5173
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+# Backend
+cd ../backend
+cp .env.example .env   # edit with your DB credentials & JWT secret
+npm install
+npm run dev   # http://localhost:5000
+```
+
+### Database
+```sql
+-- Run once to create the users table
+CREATE TABLE users (
+  id   SERIAL PRIMARY KEY,
+  email    TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL
+);
+```
+
+### API endpoints
+| Method | Path            | Description |
+|--------|-----------------|-------------|
+| GET    | `/health`       | Health check – returns `{status:"ok"}` |
+| POST   | `/signup`       | Register new user (`{email, password}`) |
+| POST   | `/login`        | Authenticate (`{email, password}`) → returns `{token}` |
+| GET    | `/protected`    | Requires `Authorization: Bearer <token>` |
+
+#### Example `curl` requests
+```bash
+# Health check
+curl http://localhost:5000/health
+
+# Signup
+curl -X POST http://localhost:5000/signup -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"secret"}'
+
+# Login
+TOKEN=$(curl -s -X POST http://localhost:5000/login -H "Content-Type: application/json" \
+  -d '{"email":"you@example.com","password":"secret"}' | jq -r .token)
+
+# Protected route
+curl http://localhost:5000/protected -H "Authorization: Bearer $TOKEN"
+```
+
+## License
+MIT – feel free to adapt and extend.
+
