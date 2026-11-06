@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import StarRating from '../components/StarRating'
+import Field from '../components/Field'
 
 export default function ResourceDetail() {
   const { id } = useParams()
@@ -29,19 +30,16 @@ export default function ResourceDetail() {
       .eq('resource_id', id)
       .order('created_at', { ascending: false })
     setReviews(rv || [])
+    const mine = (rv || []).find((x) => x.user_id === user?.id)
+    if (mine) { setRating(mine.rating); setComment(mine.comment || '') }
     setLoading(false)
-  }, [id])
+  }, [id, user?.id])
 
   useEffect(() => { load() }, [load])
 
-  useEffect(() => {
-    const mine = reviews.find((rv) => rv.user_id === user?.id)
-    if (mine) { setRating(mine.rating); setComment(mine.comment || '') }
-  }, [reviews, user])
-
   async function submitReview(e) {
     e.preventDefault()
-    if (!rating) { setError('Please pick a star rating.'); return }
+    if (!rating) { setError('Choose a star rating first.'); return }
     setError('')
     setBusy(true)
     const { error } = await supabase
@@ -55,75 +53,65 @@ export default function ResourceDetail() {
     else load()
   }
 
-  if (loading) return <p className="p-6 text-slate-400">Loading...</p>
-  if (!resource) return <p className="p-6 text-slate-400">Resource not found.</p>
+  if (loading) return <p className="page text-mute">Loading...</p>
+  if (!resource) return <p className="page text-mute">This resource doesn't exist or was removed.</p>
 
+  const n = resource.review_count
   const hasReviewed = reviews.some((rv) => rv.user_id === user?.id)
 
   return (
-    <div className="max-w-2xl mx-auto p-6 text-white">
-      <Link to="/browse" className="text-sm text-slate-400 underline">← Back to browse</Link>
-
-      <div className="mt-4 p-5 rounded-xl bg-slate-800">
-        <div className="flex items-start justify-between gap-2">
-          <h1 className="text-2xl font-bold">{resource.title}</h1>
-          <span className="text-xs px-2 py-1 rounded bg-indigo-600 uppercase">{resource.type}</span>
-        </div>
-        <p className="text-sm text-slate-400 mt-1">
-          {subject ? `Semester ${subject.semester} · ${subject.name}` : ''}
-        </p>
-        {resource.description && <p className="mt-3 text-slate-200">{resource.description}</p>}
-        <div className="flex items-center gap-2 mt-3">
-          <StarRating value={resource.avg_rating} />
-          <span className="text-slate-400 text-sm">
-            {Number(resource.avg_rating).toFixed(1)} ({resource.review_count} reviews)
-          </span>
-        </div>
-        <a
-          href={resource.url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-block mt-4 px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500"
-        >
-          Open resource ↗
-        </a>
+    <div className="mx-auto max-w-3xl px-6 py-10">
+      <Link to="/browse" className="text-sm text-mute underline underline-offset-4">Back to browse</Link>
+      <h1 className="mt-6 text-3xl font-semibold leading-tight tracking-tight">{resource.title}</h1>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 text-mute">
+        {subject && <span>Semester {subject.semester}, {subject.name}</span>}
+        <span className="rounded-sm border border-rule px-1.5 text-sm">{resource.type}</span>
       </div>
 
-      <h2 className="text-xl font-semibold mt-8 mb-3">{hasReviewed ? 'Your review' : 'Leave a review'}</h2>
+      <div className="mt-6 flex items-center gap-3">
+        {n > 0 ? (
+          <>
+            <span className="mark text-3xl font-semibold">{Number(resource.avg_rating).toFixed(1)}</span>
+            <StarRating value={resource.avg_rating} />
+            <span className="text-mute">{n} {n === 1 ? 'review' : 'reviews'}</span>
+          </>
+        ) : (
+          <span className="text-mute">No ratings yet</span>
+        )}
+      </div>
+
+      {resource.description && (
+        <p className="mt-6 max-w-prose font-read text-lg leading-relaxed">{resource.description}</p>
+      )}
+      <a href={resource.url} target="_blank" rel="noreferrer" className="btn mt-8">Open resource</a>
+
+      <h2 className="mt-14 text-xl font-semibold">{hasReviewed ? 'Your review' : 'Rate this resource'}</h2>
       {user ? (
-        <form onSubmit={submitReview} className="p-4 rounded-xl bg-slate-800 space-y-3">
+        <form onSubmit={submitReview} className="mt-4 max-w-xl space-y-4">
           <StarRating value={rating} onChange={setRating} size="text-3xl" />
-          <textarea
-            rows={3}
-            placeholder="Share your thoughts (optional)"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="w-full p-2 rounded bg-slate-700 outline-none"
-          />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button disabled={busy} className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50">
-            {busy ? 'Saving...' : hasReviewed ? 'Update review' : 'Submit review'}
-          </button>
+          <Field label="Comment (optional)">
+            <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)} className="field font-read" />
+          </Field>
+          {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+          <button disabled={busy} className="btn">{hasReviewed ? 'Update review' : 'Post review'}</button>
         </form>
       ) : (
-        <p className="text-slate-400">
-          <Link to="/login" className="underline">Log in</Link> to review this resource.
+        <p className="mt-4 text-mute">
+          <Link to="/login" className="text-pen underline underline-offset-4">Log in</Link> to rate this resource.
         </p>
       )}
 
-      <h2 className="text-xl font-semibold mt-8 mb-3">Reviews ({reviews.length})</h2>
-      <div className="space-y-3">
-        {reviews.length === 0 && <p className="text-slate-400">No reviews yet.</p>}
-        {reviews.map((rv) => (
-          <div key={rv.id} className="p-4 rounded-xl bg-slate-800">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{rv.profiles?.full_name || 'Student'}</span>
-              <StarRating value={rv.rating} size="text-base" />
-            </div>
-            {rv.comment && <p className="mt-2 text-slate-300">{rv.comment}</p>}
+      <h2 className="mt-14 border-b border-ink pb-2 text-xl font-semibold">Reviews ({reviews.length})</h2>
+      {reviews.length === 0 && <p className="py-4 text-mute">No reviews yet.</p>}
+      {reviews.map((rv) => (
+        <div key={rv.id} className="border-b border-rule py-4">
+          <div className="flex items-center gap-3">
+            <span className="font-medium">{rv.profiles?.full_name || 'Student'}</span>
+            <StarRating value={rv.rating} size="text-base" />
           </div>
-        ))}
-      </div>
+          {rv.comment && <p className="mt-1 max-w-prose font-read leading-relaxed">{rv.comment}</p>}
+        </div>
+      ))}
     </div>
   )
 }
