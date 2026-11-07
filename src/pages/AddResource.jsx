@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import Field from '../components/Field'
 
 const TYPES = ['video', 'pdf', 'article', 'notes', 'github', 'other']
 
 export default function AddResource() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [subjects, setSubjects] = useState([])
   const [topics, setTopics] = useState([])
@@ -39,6 +41,7 @@ export default function AddResource() {
         description: form.description.trim() || null,
         subject_id: Number(form.subject_id),
         topic_id: form.topic_id ? Number(form.topic_id) : null,
+        created_by: user?.id,
       })
       .select()
       .single()
@@ -54,39 +57,54 @@ export default function AddResource() {
         <Field label="Title">
           <input required value={form.title} onChange={set('title')} className="field" />
         </Field>
-        <Field label="Link">
-          <input required type="url" placeholder="https://" value={form.url} onChange={set('url')} className="field" />
+        <Field label="URL">
+          <input required type="url" placeholder="https://..." value={form.url} onChange={set('url')} className="field" />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Semester">
+            <select
+              required
+              value={subjects.find((s) => s.id === Number(form.subject_id))?.semester || ''}
+              onChange={(e) => {
+                const first = subjects.find((s) => s.semester === Number(e.target.value))
+                setForm({ ...form, subject_id: first ? String(first.id) : '', topic_id: '' })
+              }}
+              className="field"
+            >
+              <option value="">Select semester</option>
+              {semesters.map((s) => <option key={s} value={s}>Semester {s}</option>)}
+            </select>
+          </Field>
+          <Field label="Subject">
+            <select required value={form.subject_id} onChange={set('subject_id')} className="field">
+              <option value="">Select subject</option>
+              {subjects
+                .filter((s) => {
+                  const currentSem = subjects.find((x) => x.id === Number(form.subject_id))?.semester
+                  return !currentSem || s.semester === currentSem
+                })
+                .map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Topic (optional)">
+            <select value={form.topic_id} onChange={set('topic_id')} className="field" disabled={!topicOptions.length}>
+              <option value="">Select topic</option>
+              {topicOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </Field>
           <Field label="Type">
             <select value={form.type} onChange={set('type')} className="field">
               {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </Field>
-          <Field label="Subject">
-            <select required value={form.subject_id} onChange={(e) => setForm({ ...form, subject_id: e.target.value, topic_id: '' })} className="field">
-              <option value="">Choose a subject</option>
-              {semesters.map((sem) => (
-                <optgroup key={sem} label={`Semester ${sem}`}>
-                  {subjects.filter((s) => s.semester === sem).map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </Field>
         </div>
-        <Field label="Topic (optional)">
-          <select value={form.topic_id} onChange={set('topic_id')} disabled={!topicOptions.length} className="field">
-            <option value="">No specific topic</option>
-            {topicOptions.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Why is it useful? (optional)">
+        <Field label="Description (optional)">
           <textarea rows={3} value={form.description} onChange={set('description')} className="field font-read" />
         </Field>
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-        <button disabled={busy} className="btn">{busy ? 'Adding...' : 'Add resource'}</button>
+        <button disabled={busy} className="btn w-full">Submit resource</button>
       </form>
     </div>
   )
