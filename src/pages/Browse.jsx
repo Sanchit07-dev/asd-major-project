@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
+import { getBookmarkedResourceIds, toggleBookmark } from '../lib/bookmarks'
 import ResourceCard from '../components/ResourceCard'
 
 const TYPES = ['video', 'pdf', 'article', 'notes', 'github', 'other']
 
 export default function Browse() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const [resources, setResources] = useState([])
   const [subjects, setSubjects] = useState([])
+  const [bookmarkedIds, setBookmarkedIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState(params.get('q') || '')
@@ -28,8 +33,41 @@ export default function Browse() {
     })
   }, [])
 
+  useEffect(() => {
+    if (user?.id) {
+      getBookmarkedResourceIds(user.id).then((ids) => setBookmarkedIds(ids))
+    } else {
+      setBookmarkedIds(new Set())
+    }
+  }, [user?.id])
+
   const subjectName = useMemo(() => Object.fromEntries(subjects.map((s) => [s.id, s.name])), [subjects])
   const semesters = [...new Set(subjects.map((s) => s.semester))]
+
+  const handleToggleBookmark = async (resourceId) => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+
+    const isBookmarked = bookmarkedIds.has(resourceId)
+    // Optimistic update
+    const next = new Set(bookmarkedIds)
+    if (isBookmarked) {
+      next.delete(resourceId)
+    } else {
+      next.add(resourceId)
+    }
+    setBookmarkedIds(next)
+
+    try {
+      await toggleBookmark(user.id, resourceId, isBookmarked)
+    } catch (err) {
+      console.error('Failed to update bookmark:', err)
+      // Revert optimistic update on error
+      setBookmarkedIds(bookmarkedIds)
+    }
+  }
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -52,8 +90,19 @@ export default function Browse() {
             {subjectId ? subjectName[subjectId] || 'Resources' : 'All resources'}
           </h1>
           <div className="mt-5 grid gap-3 text-ink md:grid-cols-[1fr_auto_auto_auto]">
-            <input aria-label="Search" placeholder="Search by title or description" value={search} onChange={(e) => setSearch(e.target.value)} className="field" />
-            <select aria-label="Subject" value={subjectId} onChange={(e) => setParams(e.target.value ? { subject: e.target.value } : {})} className="field">
+            <input
+              aria-label="Search"
+              placeholder="Search by title or description..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="field"
+            />
+            <select
+              aria-label="Subject"
+              value={subjectId}
+              onChange={(e) => setParams(e.target.value ? { subject: e.target.value } : {})}
+              className="field"
+            >
               <option value="">All subjects</option>
               {semesters.map((sem) => (
                 <optgroup key={sem} label={`Semester ${sem}`}>
@@ -76,9 +125,16 @@ export default function Browse() {
       </section>
 
       <div className="page">
-        <p className="text-sm text-mute">
-          {visible.length} {visible.length === 1 ? 'resource' : 'resources'}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-mute">
+            {visible.length} {visible.length === 1 ? 'resource' : 'resources'}
+          </p>
+          {user && (
+            <Link to="/profile" className="text-xs text-pen font-medium hover:underline">
+              View your {bookmarkedIds.size} saved {bookmarkedIds.size === 1 ? 'resource' : 'resources'} →
+            </Link>
+          )}
+        </div>
         <div className="stagger mt-2 border-t border-navy">
           {loading && [0, 1, 2, 3].map((i) => <div key={i} className="skeleton my-4 h-20" />)}
           {error && <p role="alert" className="py-6 text-red-700">{error}</p>}
@@ -88,7 +144,13 @@ export default function Browse() {
             </p>
           )}
           {visible.map((r) => (
-            <ResourceCard key={r.id} resource={r} subjectName={subjectName[r.subject_id]} />
+            <ResourceCard
+              key={r.id}
+              resource={r}
+              subjectName={subjectName[r.subject_id]}
+              isBookmarked={bookmarkedIds.has(r.id)}
+              onToggleBookmark={handleToggleBookmark}
+            />
           ))}
         </div>
       </div>
