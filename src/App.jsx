@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { isSupabaseConfigured } from './lib/supabase'
 import { intro } from './lib/intro'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -66,7 +67,33 @@ function Shell() {
   )
 }
 
+function ConfigurationRequired() {
+  return (
+    <main className="grid min-h-screen place-items-center bg-midnight px-6 text-white">
+      <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-md">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-amber">NST Learning Hub</p>
+        <h1 className="mb-4 text-3xl font-bold">Connect Supabase to continue</h1>
+        <p className="mb-6 leading-7 text-white/70">
+          The app is running, but Supabase credentials have not been configured.
+          Create <code className="rounded bg-white/10 px-2 py-1 text-amber">.env.local</code> in the project root with:
+        </p>
+        <pre className="overflow-x-auto rounded-xl bg-black/30 p-4 text-sm leading-7 text-white/90">
+{`VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key`}
+</pre>
+        <p className="mt-6 text-sm text-white/50">
+          Copy <code>.env.example</code>, replace both placeholder values, then restart <code>npm run dev</code>.
+        </p>
+      </section>
+    </main>
+  )
+}
+
 export default function App() {
+  if (!isSupabaseConfigured) {
+    return <ConfigurationRequired />
+  }
+
   return (
     <MotionConfig reducedMotion="user">
       <BrowserRouter>
