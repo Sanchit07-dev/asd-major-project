@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -16,6 +17,10 @@ export default function Browse() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
+
+  const [searchInput, setSearchInput] = useState(
+    params.get('q') || ''
+  )
 
   const [resources, setResources] = useState([])
   const [subjects, setSubjects] = useState([])
@@ -57,6 +62,34 @@ export default function Browse() {
 
     setParams(nextParams, options)
   }
+
+  // Keep the input synchronized with URL changes,
+  // including browser back/forward navigation.
+  useEffect(() => {
+    setSearchInput(search)
+  }, [search])
+
+  // Update the URL only after the user stops typing.
+  useEffect(() => {
+    if (searchInput === search) return
+
+    const timeout = setTimeout(() => {
+      const nextParams = new URLSearchParams(params)
+      const value = searchInput.trim()
+
+      if (value) {
+        nextParams.set('q', value)
+      } else {
+        nextParams.delete('q')
+      }
+
+      if (nextParams.toString() !== params.toString()) {
+        setParams(nextParams, { replace: true })
+      }
+    }, 400)
+
+    return () => clearTimeout(timeout)
+  }, [searchInput, search, params, setParams])
 
   // Load subjects once.
   useEffect(() => {
@@ -234,6 +267,7 @@ export default function Browse() {
     nextParams.delete('sort')
 
     setParams(nextParams)
+    setSearchInput('')
     setPage(1)
   }
 
@@ -334,10 +368,8 @@ export default function Browse() {
             <input
               aria-label="Search"
               placeholder="Search by title or description..."
-              value={search}
-              onChange={(e) =>
-                updateParam('q', e.target.value, { replace: true })
-              }
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="field"
             />
 
