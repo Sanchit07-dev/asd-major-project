@@ -7,6 +7,7 @@ import { getBookmarkedResourceIds, toggleBookmark } from '../lib/bookmarks'
 import ResourceCard from '../components/ResourceCard'
 
 const TYPES = ['video', 'pdf', 'article', 'notes', 'github', 'other']
+const PAGE_SIZE = 10
 
 export default function Browse() {
   const { user } = useAuth()
@@ -22,6 +23,10 @@ export default function Browse() {
   const [error, setError] = useState('')
   const [bookmarkError, setBookmarkError] = useState('')
   const [bookmarkLoading, setBookmarkLoading] = useState(false)
+
+  const [totalCount, setTotalCount] = useState(0)
+  const [page, setPage] = useState(1)
+  const [retryCount, setRetryCount] = useState(0)
   const [bookmarkRetry, setBookmarkRetry] = useState(0)
 
   const [search, setSearch] = useState(params.get('q') || '')
@@ -30,7 +35,43 @@ export default function Browse() {
 
   const subjectId = params.get('subject') || ''
 
-  // Load resources and subjects.
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  // Load subjects once.
+  useEffect(() => {
+    let cancelled = false
+
+    const loadSubjects = async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('semester')
+        .order('name')
+
+      if (cancelled) return
+
+      if (error) {
+        console.error('Failed to load subjects:', error)
+        setError('Unable to load subjects. Please try again.')
+        return
+      }
+
+      setSubjects(data || [])
+    }
+
+    loadSubjects()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Reset pagination whenever filters or sorting change.
+  useEffect(() => {
+    setPage(1)
+  }, [search, type, subjectId, sort])
+
+  // Load only the resources required for the current page.
   useEffect(() => {
     let cancelled = false
 
@@ -39,23 +80,62 @@ export default function Browse() {
       setError('')
 
       try {
-        const [r, s] = await Promise.all([
-          supabase.from('resource_stats').select('*'),
-          supabase.from('subjects').select('*').order('semester').order('name'),
-        ])
+        const from = (page - 1) * PAGE_SIZE
+        const to = from + PAGE_SIZE - 1
 
-        if (r.error) throw r.error
-        if (s.error) throw s.error
+        let query = supabase
+          .from('resource_stats')
+          .select('*', { count: 'exact' })
+
+        if (subjectId) {
+          query = query.eq('subject_id', Number(subjectId))
+        }
+
+        if (type) {
+          query = query.eq('type', type)
+        }
+
+        const q = search.trim()
+
+        if (q) {
+          // Escape characters that have special meaning in PostgREST filters.
+          const safeSearch = q.replace(/[\\%_,"()]/g, '\\$&')
+          query = query.or(
+            `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`
+          )
+        }
+
+        if (sort === 'newest') {
+          query = query.order('created_at', { ascending: false })
+        } else {
+          query = query
+            .order('avg_rating', {
+              ascending: false,
+              nullsFirst: false,
+            })
+            .order('review_count', { ascending: false })
+            .order('created_at', { ascending: false })
+        }
+
+        query = query
+          .order('id', { ascending: true })
+          .range(from, to)
+
+        const { data, error, count } = await query
+
+        if (error) throw error
 
         if (!cancelled) {
-          setResources(r.data || [])
-          setSubjects(s.data || [])
+          setResources(data || [])
+          setTotalCount(count || 0)
         }
       } catch (err) {
-        console.error('Failed to load browse data:', err)
+        console.error('Failed to load resources:', err)
 
         if (!cancelled) {
           setError('Unable to load resources. Please try again.')
+          setResources([])
+          setTotalCount(0)
         }
       } finally {
         if (!cancelled) {
@@ -69,9 +149,9 @@ export default function Browse() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [page, search, type, subjectId, sort, retryCount])
 
-  // Load bookmarks whenever the authenticated user changes.
+  // Load bookmarks for the current user.
   useEffect(() => {
     let cancelled = false
 
@@ -112,7 +192,10 @@ export default function Browse() {
     }
   }, [user?.id, bookmarkRetry])
 
-  // Retry bookmark loading.
+  const retryResources = () => {
+    setRetryCount((previous) => previous + 1)
+  }
+
   const retryBookmarks = () => {
     setBookmarkRetry((previous) => previous + 1)
   }
@@ -124,7 +207,6 @@ export default function Browse() {
       return
     }
 
-    // Prevent multiple simultaneous updates for the same resource.
     if (updatingBookmarks.has(resourceId)) return
 
     const isBookmarked = bookmarkedIds.has(resourceId)
@@ -135,7 +217,6 @@ export default function Browse() {
       return next
     })
 
-    // Optimistic update.
     setBookmarkedIds((previous) => {
       const next = new Set(previous)
 
@@ -154,7 +235,6 @@ export default function Browse() {
     } catch (err) {
       console.error('Failed to update bookmark:', err)
 
-      // Restore the previous bookmark state.
       setBookmarkedIds((previous) => {
         const next = new Set(previous)
 
@@ -167,7 +247,9 @@ export default function Browse() {
         return next
       })
 
-      setBookmarkError('Could not update your bookmark. Please try again.')
+      setBookmarkError(
+        'Could not update your bookmark. Please try again.'
+      )
     } finally {
       setUpdatingBookmarks((previous) => {
         const next = new Set(previous)
@@ -184,26 +266,32 @@ export default function Browse() {
 
   const semesters = [...new Set(subjects.map((s) => s.semester))]
 
-  // Filter and sort resources.
-  const visible = useMemo(() => {
-    const q = search.trim().toLowerCase()
+  // Generate a maximum of five visible page numbers.
+  const pageNumbers = useMemo(() => {
+    const start = Math.max(
+      1,
+      Math.min(page - 2, totalPages - 4)
+    )
 
-    return resources
-      .filter((r) => !subjectId || r.subject_id === Number(subjectId))
-      .filter((r) => !type || r.type === type)
-      .filter(
-        (r) =>
-          !q ||
-          r.title.toLowerCase().includes(q) ||
-          (r.description || '').toLowerCase().includes(q)
-      )
-      .sort((a, b) =>
-        sort === 'newest'
-          ? new Date(b.created_at) - new Date(a.created_at)
-          : Number(b.avg_rating) - Number(a.avg_rating) ||
-            b.review_count - a.review_count
-      )
-  }, [resources, search, subjectId, type, sort])
+    const end = Math.min(totalPages, start + 4)
+
+    return Array.from(
+      { length: end - start + 1 },
+      (_, index) => start + index
+    )
+  }, [page, totalPages])
+
+  const handleSubjectChange = (value) => {
+    const nextParams = new URLSearchParams(params)
+
+    if (value) {
+      nextParams.set('subject', value)
+    } else {
+      nextParams.delete('subject')
+    }
+
+    setParams(nextParams)
+  }
 
   return (
     <>
@@ -227,9 +315,7 @@ export default function Browse() {
             <select
               aria-label="Subject"
               value={subjectId}
-              onChange={(e) =>
-                setParams(e.target.value ? { subject: e.target.value } : {})
-              }
+              onChange={(e) => handleSubjectChange(e.target.value)}
               className="field"
             >
               <option value="">All subjects</option>
@@ -277,8 +363,7 @@ export default function Browse() {
       <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-mute">
-            {visible.length}{' '}
-            {visible.length === 1 ? 'resource' : 'resources'}
+            {totalCount} {totalCount === 1 ? 'resource' : 'resources'}
           </p>
 
           {user && (
@@ -292,7 +377,6 @@ export default function Browse() {
           )}
         </div>
 
-        {/* Bookmark loading and error messages. */}
         {user && bookmarkLoading && (
           <p className="py-2 text-sm text-mute">
             Loading your saved resources...
@@ -326,15 +410,15 @@ export default function Browse() {
             <div role="alert" className="py-6 text-red-700">
               <p>{error}</p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={retryResources}
                 className="mt-2 underline font-medium"
               >
-                Reload page
+                Retry
               </button>
             </div>
           )}
 
-          {!loading && !error && visible.length === 0 && (
+          {!loading && !error && resources.length === 0 && (
             <p className="py-6">
               Nothing matches yet.{' '}
               <Link
@@ -348,7 +432,7 @@ export default function Browse() {
           )}
 
           {!error &&
-            visible.map((r) => (
+            resources.map((r) => (
               <ResourceCard
                 key={r.id}
                 resource={r}
@@ -358,6 +442,52 @@ export default function Browse() {
               />
             ))}
         </div>
+
+        {/* Pagination */}
+        {!loading && !error && totalPages > 1 && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPage((previous) => previous - 1)}
+              disabled={page === 1}
+              className="rounded border border-rule px-3 py-2 text-sm font-medium text-ink hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Previous
+            </button>
+
+            {pageNumbers.map((number) => (
+              <button
+                key={number}
+                type="button"
+                onClick={() => setPage(number)}
+                aria-current={page === number ? 'page' : undefined}
+                className={`min-w-10 rounded border px-3 py-2 text-sm font-medium transition ${
+                  page === number
+                    ? 'border-navy bg-navy text-paper'
+                    : 'border-rule text-ink hover:bg-slate-50'
+                }`}
+              >
+                {number}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setPage((previous) => previous + 1)}
+              disabled={page === totalPages}
+              className="rounded border border-rule px-3 py-2 text-sm font-medium text-ink hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && totalCount > 0 && (
+          <p className="mt-3 text-center text-xs text-mute">
+            Showing {(page - 1) * PAGE_SIZE + 1}–
+            {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} resources
+          </p>
+        )}
       </div>
     </>
   )
