@@ -68,8 +68,8 @@ export default function Browse() {
   }
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const hasActiveFilters = Boolean(
-    search.trim() || type || subjectId
-  )
+  search.trim() || type || subjectId || sort !== 'rating'
+)
   // Update a URL parameter while preserving the other parameters.
   const updateParam = (key, value, options = {}) => {
     const nextParams = new URLSearchParams(params)
