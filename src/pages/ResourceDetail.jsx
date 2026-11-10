@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -18,6 +18,8 @@ export default function ResourceDetail() {
   const [subject, setSubject] = useState(null)
   const [reviews, setReviews] = useState([])
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const [bookmarkBusy, setBookmarkBusy] = useState(false)
+  const bookmarkRequestInProgress = useRef(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
@@ -134,18 +136,32 @@ export default function ResourceDetail() {
       return
     }
 
-    const nextState = !isBookmarked
+    if (bookmarkRequestInProgress.current) return
+
+    bookmarkRequestInProgress.current = true
+
+    const previousState = isBookmarked
+    const nextState = !previousState
+
+    setBookmarkBusy(true)
     setIsBookmarked(nextState)
 
     try {
-      await toggleBookmark(user.id, Number(id), isBookmarked)
+      await toggleBookmark(user.id, Number(id), previousState)
+
       showToast(
-        nextState ? 'Saved to bookmarks' : 'Removed from bookmarks'
+        nextState
+          ? 'Saved to bookmarks'
+          : 'Removed from bookmarks'
       )
     } catch (err) {
       console.error('Bookmark update failed:', err)
-      setIsBookmarked(!nextState)
+
+      setIsBookmarked(previousState)
       showToast('Failed to update bookmark')
+    } finally {
+      bookmarkRequestInProgress.current = false
+      setBookmarkBusy(false)
     }
   }
 
@@ -354,7 +370,14 @@ export default function ResourceDetail() {
           <button
             type="button"
             onClick={handleToggleBookmark}
-            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition ${
+            disabled={bookmarkBusy}
+            aria-label={
+              isBookmarked
+                ? `Remove ${resource.title} from saved resources`
+                : `Save ${resource.title} for later`
+            }
+            aria-pressed={isBookmarked}
+            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition disabled:cursor-wait disabled:opacity-50 ${
               isBookmarked
                 ? 'border-amber bg-amber/10 text-amber-dark font-semibold'
                 : 'border-rule bg-white text-ink hover:bg-slate-50'
@@ -370,7 +393,11 @@ export default function ResourceDetail() {
             >
               <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
             </svg>
-            {isBookmarked ? 'Saved' : 'Save'}
+            {bookmarkBusy
+              ? 'Updating...'
+              : isBookmarked
+                ? 'Saved'
+                : 'Save'}
           </button>
         </div>
       </div>
