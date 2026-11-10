@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import { getBookmarkedResourceIds, toggleBookmark } from '../lib/bookmarks'
+import {
+  getBookmarkedResourceIds,
+  toggleBookmark,
+} from '../lib/bookmarks'
 import ResourceCard from '../components/ResourceCard'
 
 const TYPES = ['video', 'pdf', 'article', 'notes', 'github', 'other']
@@ -36,6 +39,10 @@ export default function Browse() {
   const subjectId = params.get('subject') || ''
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
+
+  const hasActiveFilters = Boolean(
+    search.trim() || type || subjectId
+  )
 
   // Load subjects once.
   useEffect(() => {
@@ -98,15 +105,18 @@ export default function Browse() {
         const q = search.trim()
 
         if (q) {
-          // Escape characters that have special meaning in PostgREST filters.
+          // Escape characters with special meaning in PostgREST filters.
           const safeSearch = q.replace(/[\\%_,"()]/g, '\\$&')
+
           query = query.or(
             `title.ilike.%${safeSearch}%,description.ilike.%${safeSearch}%`
           )
         }
 
         if (sort === 'newest') {
-          query = query.order('created_at', { ascending: false })
+          query = query.order('created_at', {
+            ascending: false,
+          })
         } else {
           query = query
             .order('avg_rating', {
@@ -200,6 +210,20 @@ export default function Browse() {
     setBookmarkRetry((previous) => previous + 1)
   }
 
+  // Clear all active search and filter options.
+  const clearFilters = () => {
+    setSearch('')
+    setType('')
+
+    const nextParams = new URLSearchParams(params)
+    nextParams.delete('subject')
+    nextParams.delete('q')
+    nextParams.delete('type')
+
+    setParams(nextParams)
+    setPage(1)
+  }
+
   // Toggle bookmark status.
   const handleToggleBookmark = async (resourceId) => {
     if (!user) {
@@ -217,6 +241,7 @@ export default function Browse() {
       return next
     })
 
+    // Optimistically update the bookmark state.
     setBookmarkedIds((previous) => {
       const next = new Set(previous)
 
@@ -235,6 +260,7 @@ export default function Browse() {
     } catch (err) {
       console.error('Failed to update bookmark:', err)
 
+      // Restore the previous state if the request fails.
       setBookmarkedIds((previous) => {
         const next = new Set(previous)
 
@@ -391,6 +417,7 @@ export default function Browse() {
             <p>{bookmarkError}</p>
 
             <button
+              type="button"
               onClick={retryBookmarks}
               disabled={bookmarkLoading}
               className="underline font-medium disabled:opacity-50"
@@ -407,31 +434,72 @@ export default function Browse() {
             ))}
 
           {error && (
-            <div role="alert" className="py-6 text-red-700">
-              <p>{error}</p>
+            <div
+              role="alert"
+              className="my-8 rounded border border-red-200 bg-red-50 p-5"
+            >
+              <h2 className="font-semibold text-red-800">
+                Unable to load resources
+              </h2>
+
+              <p className="mt-1 text-sm text-red-700">
+                {error}
+              </p>
+
               <button
+                type="button"
                 onClick={retryResources}
-                className="mt-2 underline font-medium"
+                disabled={loading}
+                className="mt-3 rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-800 hover:bg-red-100 disabled:opacity-50"
               >
-                Retry
+                {loading ? 'Retrying...' : 'Try again'}
               </button>
             </div>
           )}
 
           {!loading && !error && resources.length === 0 && (
-            <p className="py-6">
-              Nothing matches yet.{' '}
-              <Link
-                to="/add"
-                className="text-pen underline underline-offset-4"
-              >
-                Add the first resource
-              </Link>{' '}
-              for this subject.
-            </p>
+            <div className="py-12 text-center">
+              {hasActiveFilters ? (
+                <>
+                  <h2 className="text-lg font-semibold text-ink">
+                    No matching resources found
+                  </h2>
+
+                  <p className="mt-2 text-sm text-mute">
+                    Try changing your search or selecting different filters.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-4 rounded border border-navy px-4 py-2 text-sm font-medium text-navy hover:bg-slate-50"
+                  >
+                    Clear all filters
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-lg font-semibold text-ink">
+                    No resources available yet
+                  </h2>
+
+                  <p className="mt-2 text-sm text-mute">
+                    Be the first to contribute a learning resource.
+                  </p>
+
+                  <Link
+                    to="/add"
+                    className="mt-4 inline-block rounded bg-navy px-4 py-2 text-sm font-medium text-paper hover:opacity-90"
+                  >
+                    Add a resource
+                  </Link>
+                </>
+              )}
+            </div>
           )}
 
-          {!error &&
+          {!loading &&
+            !error &&
             resources.map((r) => (
               <ResourceCard
                 key={r.id}
