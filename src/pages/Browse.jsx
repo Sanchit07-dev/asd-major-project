@@ -484,6 +484,7 @@ export default function Browse() {
                 resource={r}
                 subjectName={subjectName[r.subject_id]}
                 isBookmarked={bookmarkedIds.has(r.id)}
+                isBookmarkLoading={updatingBookmarks.has(r.id)}
                 onToggleBookmark={handleToggleBookmark}
               />
             ))}
