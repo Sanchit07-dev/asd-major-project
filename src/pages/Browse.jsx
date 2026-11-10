@@ -32,10 +32,11 @@ export default function Browse() {
   const [retryCount, setRetryCount] = useState(0)
   const [bookmarkRetry, setBookmarkRetry] = useState(0)
 
-  const [search, setSearch] = useState(params.get('q') || '')
-  const [type, setType] = useState(params.get('type') || '')
-  const [sort, setSort] = useState('rating')
-
+  // Read filters directly from the URL.
+  const search = params.get('q') || ''
+  const rawType = params.get('type') || ''
+  const type = TYPES.includes(rawType) ? rawType : ''
+  const sort = params.get('sort') === 'newest' ? 'newest' : 'rating'
   const subjectId = params.get('subject') || ''
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
@@ -43,6 +44,19 @@ export default function Browse() {
   const hasActiveFilters = Boolean(
     search.trim() || type || subjectId
   )
+
+  // Update a URL parameter while preserving the other parameters.
+  const updateParam = (key, value, options = {}) => {
+    const nextParams = new URLSearchParams(params)
+
+    if (value) {
+      nextParams.set(key, value)
+    } else {
+      nextParams.delete(key)
+    }
+
+    setParams(nextParams, options)
+  }
 
   // Load subjects once.
   useEffect(() => {
@@ -212,13 +226,12 @@ export default function Browse() {
 
   // Clear all active search and filter options.
   const clearFilters = () => {
-    setSearch('')
-    setType('')
-
     const nextParams = new URLSearchParams(params)
-    nextParams.delete('subject')
+
     nextParams.delete('q')
+    nextParams.delete('subject')
     nextParams.delete('type')
+    nextParams.delete('sort')
 
     setParams(nextParams)
     setPage(1)
@@ -307,18 +320,6 @@ export default function Browse() {
     )
   }, [page, totalPages])
 
-  const handleSubjectChange = (value) => {
-    const nextParams = new URLSearchParams(params)
-
-    if (value) {
-      nextParams.set('subject', value)
-    } else {
-      nextParams.delete('subject')
-    }
-
-    setParams(nextParams)
-  }
-
   return (
     <>
       <section className="band bg-navy text-paper">
@@ -334,14 +335,16 @@ export default function Browse() {
               aria-label="Search"
               placeholder="Search by title or description..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                updateParam('q', e.target.value, { replace: true })
+              }
               className="field"
             />
 
             <select
               aria-label="Subject"
               value={subjectId}
-              onChange={(e) => handleSubjectChange(e.target.value)}
+              onChange={(e) => updateParam('subject', e.target.value)}
               className="field"
             >
               <option value="">All subjects</option>
@@ -362,7 +365,7 @@ export default function Browse() {
             <select
               aria-label="Type"
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => updateParam('type', e.target.value)}
               className="field"
             >
               <option value="">All types</option>
@@ -376,7 +379,7 @@ export default function Browse() {
             <select
               aria-label="Sort"
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e) => updateParam('sort', e.target.value)}
               className="field"
             >
               <option value="rating">Top rated</option>
