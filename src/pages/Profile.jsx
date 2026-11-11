@@ -171,6 +171,13 @@ export default function Profile() {
     )
   }
 
+  const statButtonClass = (active) =>
+    `cursor-pointer rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 ${
+      active
+        ? 'border-navy bg-navy/5 shadow-sm'
+        : 'border-rule bg-white hover:bg-slate-50'
+    }`
+
   return (
     <div className="page relative">
       {/* Toast Notification */}
@@ -196,13 +203,11 @@ export default function Profile() {
 
       {/* Profile Overview Stats */}
       <div className="mt-6 grid grid-cols-3 gap-4">
-        <div
+        <button
+          type="button"
+          aria-pressed={activeTab === 'resources'}
           onClick={() => setActiveTab('resources')}
-          className={`cursor-pointer rounded-xl border p-4 transition ${
-            activeTab === 'resources'
-              ? 'border-navy bg-navy/5 shadow-sm'
-              : 'border-rule bg-white hover:bg-slate-50'
-          }`}
+          className={statButtonClass(activeTab === 'resources')}
         >
           <div className="text-2xl font-bold text-navy">
             {mine.length}
@@ -210,14 +215,16 @@ export default function Profile() {
           <div className="text-xs font-medium uppercase tracking-wider text-mute mt-1">
             Shared Resources
           </div>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
+          aria-pressed={activeTab === 'saved'}
           onClick={() => setActiveTab('saved')}
-          className={`cursor-pointer rounded-xl border p-4 transition ${
+          className={`${statButtonClass(false)} ${
             activeTab === 'saved'
               ? 'border-amber bg-amber/5 shadow-sm'
-              : 'border-rule bg-white hover:bg-slate-50'
+              : ''
           }`}
         >
           <div className="text-2xl font-bold text-amber-dark">
@@ -226,15 +233,13 @@ export default function Profile() {
           <div className="text-xs font-medium uppercase tracking-wider text-mute mt-1">
             Saved Bookmarks
           </div>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
+          aria-pressed={activeTab === 'reviews'}
           onClick={() => setActiveTab('reviews')}
-          className={`cursor-pointer rounded-xl border p-4 transition ${
-            activeTab === 'reviews'
-              ? 'border-navy bg-navy/5 shadow-sm'
-              : 'border-rule bg-white hover:bg-slate-50'
-          }`}
+          className={statButtonClass(activeTab === 'reviews')}
         >
           <div className="text-2xl font-bold text-ink">
             {reviews.length}
@@ -242,12 +247,14 @@ export default function Profile() {
           <div className="text-xs font-medium uppercase tracking-wider text-mute mt-1">
             Reviews Given
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Navigation Tabs */}
       <div className="mt-8 flex gap-6 border-b border-rule text-sm font-medium">
         <button
+          type="button"
+          aria-pressed={activeTab === 'resources'}
           onClick={() => setActiveTab('resources')}
           className={`pb-3 transition relative ${
             activeTab === 'resources'
@@ -259,6 +266,8 @@ export default function Profile() {
         </button>
 
         <button
+          type="button"
+          aria-pressed={activeTab === 'saved'}
           onClick={() => setActiveTab('saved')}
           className={`pb-3 transition relative ${
             activeTab === 'saved'
@@ -270,6 +279,8 @@ export default function Profile() {
         </button>
 
         <button
+          type="button"
+          aria-pressed={activeTab === 'reviews'}
           onClick={() => setActiveTab('reviews')}
           className={`pb-3 transition relative ${
             activeTab === 'reviews'
