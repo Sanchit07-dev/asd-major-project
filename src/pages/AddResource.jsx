@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -24,12 +25,16 @@ export default function AddResource() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
+    let active = true
+
     async function fetchSubjects() {
       const { data, error } = await supabase
         .from('subjects')
         .select('*')
         .order('semester')
         .order('name')
+
+      if (!active) return
 
       if (error) {
         setError(error.message)
@@ -40,20 +45,30 @@ export default function AddResource() {
     }
 
     fetchSubjects()
+
+    return () => {
+      active = false
+    }
   }, [])
 
   useEffect(() => {
+    let active = true
+
     async function fetchTopics() {
       if (!form.subject_id) {
         setTopics([])
         return
       }
 
+      setTopics([])
+
       const { data, error } = await supabase
         .from('topics')
         .select('*')
         .eq('subject_id', form.subject_id)
         .order('name')
+
+      if (!active) return
 
       if (error) {
         setError(error.message)
@@ -65,10 +80,24 @@ export default function AddResource() {
     }
 
     fetchTopics()
+
+    return () => {
+      active = false
+    }
   }, [form.subject_id])
 
   const set = (key) => (e) => {
     setForm({ ...form, [key]: e.target.value })
+  }
+
+  function handleSubjectChange(e) {
+    setForm({
+      ...form,
+      subject_id: e.target.value,
+      topic_id: '',
+    })
+
+    setError('')
   }
 
   const semesters = [...new Set(subjects.map((s) => s.semester))]
@@ -76,6 +105,8 @@ export default function AddResource() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+
+    if (busy) return
 
     setError('')
     setBusy(true)
@@ -165,6 +196,8 @@ export default function AddResource() {
                   subject_id: first ? String(first.id) : '',
                   topic_id: '',
                 })
+
+                setError('')
               }}
               className="field"
             >
@@ -182,7 +215,7 @@ export default function AddResource() {
             <select
               required
               value={form.subject_id}
-              onChange={set('subject_id')}
+              onChange={handleSubjectChange}
               className="field"
             >
               <option value="">Select subject</option>
