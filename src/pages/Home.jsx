@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -26,28 +27,69 @@ export default function Home() {
   const [counts, setCounts] = useState({})
   const [stats, setStats] = useState({ resources: 0, avg: null })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
   const [q, setQ] = useState('')
   const [type, setType] = useState('')
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('subjects').select('*').order('semester').order('name'),
-      supabase.from('resources').select('subject_id'),
-      supabase.from('reviews').select('rating'),
-    ]).then(([s, r, rv]) => {
-      const res = r.data || []
-      const c = {}
-      res.forEach((x) => { c[x.subject_id] = (c[x.subject_id] || 0) + 1 })
-      const ratings = (rv.data || []).map((x) => x.rating)
-      setSubjects(s.data || [])
-      setCounts(c)
-      setStats({
-        resources: res.length,
-        avg: ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null,
-      })
-      setLoading(false)
-    })
-  }, [])
+    let active = true
+
+    async function loadHomeData() {
+      setLoading(true)
+      setError('')
+
+      try {
+        const [s, r, rv] = await Promise.all([
+          supabase.from('subjects').select('*').order('semester').order('name'),
+          supabase.from('resources').select('subject_id'),
+          supabase.from('reviews').select('rating'),
+        ])
+
+        if (s.error || r.error || rv.error) {
+          throw new Error(
+            s.error?.message || r.error?.message || rv.error?.message
+          )
+        }
+
+        const res = r.data || []
+        const c = {}
+
+        res.forEach((x) => {
+          c[x.subject_id] = (c[x.subject_id] || 0) + 1
+        })
+
+        const ratings = (rv.data || []).map((x) => x.rating)
+
+        if (!active) return
+
+        setSubjects(s.data || [])
+        setCounts(c)
+        setStats({
+          resources: res.length,
+          avg: ratings.length
+            ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+            : null,
+        })
+      } catch (err) {
+        console.error('Home data loading failed:', err)
+
+        if (active) {
+          setError('Unable to load homepage data. Please try again.')
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadHomeData()
+
+    return () => {
+      active = false
+    }
+  }, [retryCount])
 
   function search(e) {
     e.preventDefault()
@@ -89,6 +131,7 @@ export default function Home() {
           >
             Study material for every NST subject, rated by the students who used it.
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -97,6 +140,7 @@ export default function Home() {
           >
             Find what to study for your syllabus, and add the links that helped you.
           </motion.p>
+
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -106,6 +150,7 @@ export default function Home() {
             <Link to="/browse" className="btn cta px-6 py-3 text-base transition-transform duration-200 hover:scale-105">
               Browse resources
             </Link>
+
             <Link to="/add" className={`${glass} rounded-md px-6 py-3 text-base font-medium transition-colors hover:bg-white/15`}>
               Add a resource
             </Link>
@@ -148,8 +193,10 @@ export default function Home() {
             onChange={(e) => setQ(e.target.value)}
             className="w-full rounded-md border border-white/15 bg-white/10 px-4 py-3 text-white placeholder-white/50"
           />
+
           <button className="btn px-6 py-3">Search</button>
         </div>
+
         <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Resource type">
           {TYPES.map((t) => (
             <button
@@ -168,15 +215,41 @@ export default function Home() {
       </motion.form>
 
       <section className="relative mx-auto mt-20 max-w-5xl px-6">
-        <h2 className={`pb-1 text-3xl font-semibold tracking-tight ${gradientText}`}>Find your subject</h2>
+        <h2 className={`pb-1 text-3xl font-semibold tracking-tight ${gradientText}`}>
+          Find your subject
+        </h2>
+
         {loading && (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {[0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/10" />)}
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/10" />
+            ))}
           </div>
         )}
-        {semesters.map((sem) => (
+
+        {error && (
+          <div
+            className="mt-8 rounded-2xl border border-red-400/30 bg-red-400/10 p-6"
+            role="alert"
+          >
+            <p className="text-white">{error}</p>
+
+            <button
+              type="button"
+              onClick={() => setRetryCount((count) => count + 1)}
+              className="btn mt-4 px-5 py-2"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !error && semesters.map((sem) => (
           <div key={sem} className="mt-10">
-            <h3 className="mb-4 text-lg font-semibold text-amber-200">Semester {sem}</h3>
+            <h3 className="mb-4 text-lg font-semibold text-amber-200">
+              Semester {sem}
+            </h3>
+
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {subjects.filter((s) => s.semester === sem).map((s, i) => (
                 <motion.div
@@ -191,8 +264,10 @@ export default function Home() {
                     className={`${glass} block rounded-2xl p-5 shadow-lg shadow-black/20 transition duration-200 hover:-translate-y-1 hover:border-amber/60 hover:shadow-[0_10px_30px_rgba(245,158,11,0.18)]`}
                   >
                     <div className="font-semibold">{s.name}</div>
+
                     <div className="mt-2 text-sm text-white/60">
-                      <span className="text-amber">{counts[s.id] || 0}</span> {counts[s.id] === 1 ? 'resource' : 'resources'}
+                      <span className="text-amber">{counts[s.id] || 0}</span>{' '}
+                      {counts[s.id] === 1 ? 'resource' : 'resources'}
                     </div>
                   </Link>
                 </motion.div>
