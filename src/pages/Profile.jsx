@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
@@ -20,10 +20,30 @@ export default function Profile() {
   const [retryCount, setRetryCount] = useState(0)
   const [actionMessage, setActionMessage] = useState('')
 
+  const notificationTimerRef = useRef(null)
+
+  // Display a notification and reset its timer if another appears.
   const showNotification = (msg) => {
+    if (notificationTimerRef.current) {
+      clearTimeout(notificationTimerRef.current)
+    }
+
     setActionMessage(msg)
-    setTimeout(() => setActionMessage(''), 3000)
+
+    notificationTimerRef.current = setTimeout(() => {
+      setActionMessage('')
+      notificationTimerRef.current = null
+    }, 3000)
   }
+
+  // Clean up the notification timer when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (notificationTimerRef.current) {
+        clearTimeout(notificationTimerRef.current)
+      }
+    }
+  }, [])
 
   // Load all profile data.
   useEffect(() => {
@@ -182,7 +202,11 @@ export default function Profile() {
     <div className="page relative">
       {/* Toast Notification */}
       {actionMessage && (
-        <div className="fixed bottom-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise"
+        >
           {actionMessage}
         </div>
       )}
@@ -221,10 +245,10 @@ export default function Profile() {
           type="button"
           aria-pressed={activeTab === 'saved'}
           onClick={() => setActiveTab('saved')}
-          className={`${statButtonClass(false)} ${
+          className={`cursor-pointer rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber focus-visible:ring-offset-2 ${
             activeTab === 'saved'
               ? 'border-amber bg-amber/5 shadow-sm'
-              : ''
+              : 'border-rule bg-white hover:bg-slate-50'
           }`}
         >
           <div className="text-2xl font-bold text-amber-dark">
