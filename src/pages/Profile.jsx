@@ -203,12 +203,10 @@ export default function Profile() {
       {/* Toast Notification */}
       {actionMessage && (
         <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise"
-        >
-          {actionMessage}
-        </div>
+  role="status"
+  aria-live="polite"
+  className="fixed top-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise">{actionMessage}
+</div>
       )}
 
       {/* User Header */}
