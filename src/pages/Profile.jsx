@@ -19,6 +19,7 @@ export default function Profile() {
   const [loadError, setLoadError] = useState('')
   const [retryCount, setRetryCount] = useState(0)
   const [actionMessage, setActionMessage] = useState('')
+  const [removingBookmarks, setRemovingBookmarks] = useState(new Set())
 
   const notificationTimerRef = useRef(null)
 
@@ -112,6 +113,14 @@ export default function Profile() {
 
   // Remove a saved bookmark.
   const handleRemoveBookmark = async (resourceId) => {
+    if (removingBookmarks.has(resourceId)) return
+
+    setRemovingBookmarks((previous) => {
+      const next = new Set(previous)
+      next.add(resourceId)
+      return next
+    })
+
     try {
       await toggleBookmark(user.id, resourceId, true)
 
@@ -123,6 +132,12 @@ export default function Profile() {
     } catch (err) {
       console.error('Failed to remove bookmark:', err)
       showNotification('Failed to remove bookmark')
+    } finally {
+      setRemovingBookmarks((previous) => {
+        const next = new Set(previous)
+        next.delete(resourceId)
+        return next
+      })
     }
   }
 
@@ -203,10 +218,12 @@ export default function Profile() {
       {/* Toast Notification */}
       {actionMessage && (
         <div
-  role="status"
-  aria-live="polite"
-  className="fixed top-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise">{actionMessage}
-</div>
+          role="status"
+          aria-live="polite"
+          className="fixed top-6 right-6 z-50 rounded-lg bg-midnight px-4 py-3 text-sm font-medium text-paper shadow-lg border border-amber/30 transition-all animate-rise"
+        >
+          {actionMessage}
+        </div>
       )}
 
       {/* User Header */}
@@ -393,6 +410,7 @@ export default function Profile() {
                         key={r.id}
                         resource={r}
                         isBookmarked={true}
+                        isBookmarkLoading={removingBookmarks.has(r.id)}
                         onToggleBookmark={handleRemoveBookmark}
                       />
                     ))}

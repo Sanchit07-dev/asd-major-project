@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
@@ -8,21 +9,57 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setUser(data.session?.user ?? null)
+    let isMounted = true
+    let authEventReceived = false
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      authEventReceived = true
+
+      if (!isMounted) return
+
+      setUser(session?.user ?? null)
       setLoading(false)
     })
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-    })
-    return () => listener.subscription.unsubscribe()
+
+    async function initializeSession() {
+      try {
+        const { data, error } = await supabase.auth.getSession()
+
+        if (error) throw error
+
+        if (isMounted && !authEventReceived) {
+          setUser(data.session?.user ?? null)
+        }
+      } catch (err) {
+        console.error('Session initialization failed:', err)
+
+        if (isMounted && !authEventReceived) {
+          setUser(null)
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    initializeSession()
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = (email, password, fullName) =>
     supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+      },
     })
 
   const signIn = (email, password) =>
@@ -31,7 +68,9 @@ export function AuthProvider({ children }) {
   const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, signUp, signIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )

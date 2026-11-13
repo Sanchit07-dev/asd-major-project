@@ -20,6 +20,8 @@ export default function ResourceDetail() {
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [bookmarkBusy, setBookmarkBusy] = useState(false)
   const bookmarkRequestInProgress = useRef(false)
+  const loadRequestId = useRef(0)
+
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
 
@@ -28,6 +30,7 @@ export default function ResourceDetail() {
   const [comment, setComment] = useState('')
   const [reviewError, setReviewError] = useState('')
   const [reviewBusy, setReviewBusy] = useState(false)
+  const reviewRequestInProgress = useRef(false)
 
   // Resource Edit state
   const [isEditing, setIsEditing] = useState(false)
@@ -50,6 +53,11 @@ export default function ResourceDetail() {
 
   // Load resource, subject, reviews and bookmark status
   const load = useCallback(async () => {
+    const requestId = ++loadRequestId.current
+
+    const isCurrentRequest = () =>
+      requestId === loadRequestId.current
+
     setLoading(true)
     setLoadError('')
 
@@ -61,6 +69,7 @@ export default function ResourceDetail() {
         .maybeSingle()
 
       if (resourceError) throw resourceError
+      if (!isCurrentRequest()) return
 
       setResource(r)
 
@@ -68,6 +77,8 @@ export default function ResourceDetail() {
         setSubject(null)
         setReviews([])
         setIsBookmarked(false)
+        setRating(0)
+        setComment('')
         return
       }
 
@@ -85,6 +96,7 @@ export default function ResourceDetail() {
         .maybeSingle()
 
       if (subjectError) throw subjectError
+      if (!isCurrentRequest()) return
 
       setSubject(s)
 
@@ -95,6 +107,7 @@ export default function ResourceDetail() {
         .order('created_at', { ascending: false })
 
       if (reviewFetchError) throw reviewFetchError
+      if (!isCurrentRequest()) return
 
       const loadedReviews = rv || []
       setReviews(loadedReviews)
@@ -103,30 +116,36 @@ export default function ResourceDetail() {
         (review) => review.user_id === user?.id
       )
 
-      if (mine) {
-        setRating(mine.rating)
-        setComment(mine.comment || '')
-      } else {
-        setRating(0)
-        setComment('')
-      }
+      setRating(mine?.rating || 0)
+      setComment(mine?.comment || '')
 
       if (user?.id) {
         const bookmarkedIds = await getBookmarkedResourceIds(user.id)
+
+        if (!isCurrentRequest()) return
+
         setIsBookmarked(bookmarkedIds.has(Number(id)))
       } else {
         setIsBookmarked(false)
       }
     } catch (err) {
+      if (!isCurrentRequest()) return
+
       console.error('Resource loading failed:', err)
       setLoadError(err.message || 'Failed to load resource details.')
     } finally {
-      setLoading(false)
+      if (isCurrentRequest()) {
+        setLoading(false)
+      }
     }
   }, [id, user?.id])
 
   useEffect(() => {
     load()
+
+    return () => {
+      loadRequestId.current += 1
+    }
   }, [load])
 
   // Bookmark handling
@@ -179,11 +198,20 @@ export default function ResourceDetail() {
   async function submitReview(e) {
     e.preventDefault()
 
+    // Prevent duplicate submissions
+    if (reviewRequestInProgress.current) return
+
+    if (!user?.id) {
+      setReviewError('Please log in to submit a review.')
+      return
+    }
+
     if (!rating) {
       setReviewError('Choose a star rating first.')
       return
     }
 
+    reviewRequestInProgress.current = true
     setReviewError('')
     setReviewBusy(true)
 
@@ -208,6 +236,7 @@ export default function ResourceDetail() {
       console.error('Review submission failed:', err)
       setReviewError(err.message || 'Failed to submit review.')
     } finally {
+      reviewRequestInProgress.current = false
       setReviewBusy(false)
     }
   }
@@ -605,7 +634,11 @@ export default function ResourceDetail() {
             </p>
           )}
 
-          <button disabled={reviewBusy} className="btn">
+          <button
+            type="submit"
+            disabled={reviewBusy}
+            className="btn"
+          >
             {reviewBusy
               ? 'Submitting...'
               : hasReviewed
