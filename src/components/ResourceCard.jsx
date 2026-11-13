@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom'
 
 export default function ResourceCard({
@@ -19,10 +20,7 @@ export default function ResourceCard({
   }
 
   return (
-    <Link
-      to={`/resource/${resource.id}`}
-      className="group -mx-2 grid grid-cols-[3.5rem_1fr] gap-4 border-b border-rule px-2 py-5 transition-colors hover:bg-white relative"
-    >
+    <div className="group -mx-2 grid grid-cols-[3.5rem_1fr] gap-4 border-b border-rule px-2 py-5 transition-colors hover:bg-white relative">
       <div className="text-right">
         {n > 0 ? (
           <span className="mark text-2xl font-semibold">
@@ -36,7 +34,12 @@ export default function ResourceCard({
       <div>
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-lg font-semibold leading-snug group-hover:text-pen transition-colors">
-            {resource.title}
+            <Link
+              to={`/resource/${resource.id}`}
+              className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber rounded-sm"
+            >
+              {resource.title}
+            </Link>
           </h3>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -99,6 +102,6 @@ export default function ResourceCard({
           </p>
         )}
       </div>
-    </Link>
+    </div>
   )
 }
