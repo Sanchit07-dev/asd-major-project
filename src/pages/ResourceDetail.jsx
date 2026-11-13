@@ -30,6 +30,7 @@ export default function ResourceDetail() {
   const [comment, setComment] = useState('')
   const [reviewError, setReviewError] = useState('')
   const [reviewBusy, setReviewBusy] = useState(false)
+  const reviewRequestInProgress = useRef(false)
 
   // Resource Edit state
   const [isEditing, setIsEditing] = useState(false)
@@ -197,13 +198,20 @@ export default function ResourceDetail() {
   async function submitReview(e) {
     e.preventDefault()
 
-    if (reviewBusy) return
+    // Prevent duplicate submissions
+    if (reviewRequestInProgress.current) return
+
+    if (!user?.id) {
+      setReviewError('Please log in to submit a review.')
+      return
+    }
 
     if (!rating) {
       setReviewError('Choose a star rating first.')
       return
     }
 
+    reviewRequestInProgress.current = true
     setReviewError('')
     setReviewBusy(true)
 
@@ -228,6 +236,7 @@ export default function ResourceDetail() {
       console.error('Review submission failed:', err)
       setReviewError(err.message || 'Failed to submit review.')
     } finally {
+      reviewRequestInProgress.current = false
       setReviewBusy(false)
     }
   }
@@ -625,7 +634,11 @@ export default function ResourceDetail() {
             </p>
           )}
 
-          <button disabled={reviewBusy} className="btn">
+          <button
+            type="submit"
+            disabled={reviewBusy}
+            className="btn"
+          >
             {reviewBusy
               ? 'Submitting...'
               : hasReviewed
