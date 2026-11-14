@@ -44,3 +44,7 @@ coverage/
 
 # Deployment
 .vercel/
+
+# Explicit env file exclusions
+.env.local
+.env.*.local
