@@ -1,59 +1,38 @@
 # NST Learning Hub
 
-A syllabus-specific, community-powered platform where NST students discover, share, review, rate, and bookmark reliable academic learning resources.
+> A syllabus-specific, community-powered platform where NST students discover, share, review, rate, and bookmark reliable academic learning resources.
+
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Coming%20Soon-amber?style=flat-square)](https://your-live-demo-url.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](./LICENSE)
 
 ---
 
-## Key Features
+## Screenshots
 
-- **Authentication & Profiles:** Secure email authentication via Supabase Auth with automated profile synchronization triggers.
-- **Syllabus Hierarchy:** Resources categorized systematically by Semester (1–8) → Subject → Topic.
-- **Resource Discovery & Search:**
-  - Real-time client-side search across resource titles and descriptions.
-  - Multi-filtering by semester, subject, and resource type (`video`, `pdf`, `article`, `notes`, `github`, `other`).
-  - Sorting by top-rated or newest submissions.
-- **Interactive Ratings & Reviews:**
-  - 1–5 star rating system with written commentary.
-  - One review per user per resource with in-place editing and deletion.
-  - Dynamic `resource_stats` SQL view calculating real-time average ratings and review counts.
-- **Personal Library & Bookmarks:**
-  - One-click bookmarking ("Save for later") directly from resource cards or detail pages with optimistic UI updates.
-  - Dedicated "Saved Bookmarks" view in user profile for quick revision access.
-- **Author Management & Ownership (CRUD):**
-  - Resource creators can edit title, URL, type, and description.
-  - Resource creators can delete their submissions safely.
-  - Students can manage and delete their submitted reviews directly from their profile.
-- **Share & Collaboration:** One-click resource link copying with instant feedback notifications.
+> _Add screenshots here once deployed._
+
+---
+
+## Features
+
+- **Authentication & Profiles** — Secure email sign-up/sign-in via Supabase Auth with auto-synced user profiles.
+- **Syllabus Hierarchy** — Resources organised by Semester (1–8) → Subject → Topic.
+- **Search & Filter** — Real-time search by title/description, filter by semester, subject, and resource type (`video`, `pdf`, `article`, `notes`, `github`, `other`), sort by top-rated or newest.
+- **Ratings & Reviews** — 1–5 star ratings with written comments, one review per user per resource, in-place edit and delete.
+- **Bookmarks** — One-click save from cards or detail pages; view saved resources in your personal library.
+- **Resource CRUD** — Authors can edit or delete their own submissions; students can delete their reviews from their profile.
+- **Share** — One-click resource URL copy with instant feedback.
+- **Mobile-friendly** — Responsive layout with a hamburger navigation menu on small screens.
 
 ---
 
 ## Tech Stack
 
-- **Frontend:** React 19, Vite 8, Tailwind CSS v4, Framer Motion, React Router 7
-- **Backend / Database / Auth:** Supabase (PostgreSQL with Row Level Security)
-- **Linter & Tooling:** Oxlint, PostCSS
-
----
-
-## Database Architecture & Security
-
-The platform utilizes a zero-trust Row Level Security (RLS) model in PostgreSQL.
-
-### Tables & Views
-1. `profiles`: User information synced automatically with `auth.users` via database triggers.
-2. `subjects`: Academic subjects tagged by semester (1 to 8).
-3. `topics`: Sub-topics linked via foreign key to subjects.
-4. `resources`: Learning materials contributed by authenticated students.
-5. `reviews`: User ratings and comments with a composite unique constraint on `(resource_id, user_id)`.
-6. `bookmarks`: Saved resources with unique constraint on `(user_id, resource_id)`.
-7. `resource_stats` (View): Aggregated calculation of `avg_rating` and `review_count` per resource.
-
-### Row Level Security (RLS)
-- **Read Policies:** All subjects, topics, resources, and reviews are publicly viewable.
-- **Write Policies:** Restricted strictly to authenticated users.
-- **Modify/Delete Policies:** Only the original creator (`auth.uid() = created_by` or `auth.uid() = user_id`) has permission to update or delete resources, reviews, and personal bookmarks.
-
-The full schema DDL, RLS policies, trigger functions, and syllabus seed data are located in `supabase/schema.sql`.
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, Vite 8, Tailwind CSS v4, Framer Motion, React Router 7 |
+| Backend / DB / Auth | Supabase (PostgreSQL + Row Level Security) |
+| Linting | Oxlint |
 
 ---
 
@@ -61,68 +40,121 @@ The full schema DDL, RLS policies, trigger functions, and syllabus seed data are
 
 ```
 asd-major-project/
-├── public/                 # Static assets and icons
+├── public/                    # Static assets (favicon.svg, …)
+├── scripts/
+│   └── supabase_test.js       # Standalone connection/demo script
 ├── src/
 │   ├── components/
-│   │   ├── Field.jsx       # Form input wrapper with labels and errors
-│   │   ├── Navbar.jsx      # Navigation header with animated transitions
-│   │   ├── ProtectedRoute.jsx # Route guard for authenticated pages
-│   │   ├── ResourceCard.jsx   # Resource list item with ratings and bookmark toggle
-│   │   └── StarRating.jsx     # Interactive 5-star rating component
+│   │   ├── Field.jsx           # Form input wrapper
+│   │   ├── LoadingSpinner.jsx  # Accessible loading indicator
+│   │   ├── Navbar.jsx          # Responsive navigation header
+│   │   ├── ProtectedRoute.jsx  # Auth-gated route guard
+│   │   ├── ResourceCard.jsx    # Resource list item with ratings & bookmark toggle
+│   │   └── StarRating.jsx      # Interactive 5-star rating component
 │   ├── context/
-│   │   └── AuthContext.jsx # Global Supabase authentication provider
+│   │   └── AuthContext.jsx     # Global Supabase auth provider
 │   ├── lib/
-│   │   ├── bookmarks.js    # Bookmark queries and optimistic toggle operations
-│   │   ├── intro.js        # First-load animation state helper
-│   │   └── supabase.js     # Supabase client initialization
+│   │   ├── bookmarks.js        # Bookmark queries & optimistic toggle
+│   │   ├── intro.js            # First-load animation state
+│   │   └── supabase.js         # Supabase client initialisation
 │   ├── pages/
-│   │   ├── AddResource.jsx    # Resource contribution form
-│   │   ├── Browse.jsx         # Search, filter, and browse catalog
-│   │   ├── Home.jsx           # Landing page with syllabus overview
-│   │   ├── Login.jsx          # User sign-in
-│   │   ├── Profile.jsx        # User dashboard (Submissions, Bookmarks, Reviews)
-│   │   ├── ResourceDetail.jsx # Detailed view, rating form, share & creator controls
-│   │   └── Signup.jsx         # User registration
-│   ├── App.jsx             # Main router and shell layout
-│   ├── index.css           # Tailwind v4 theme and custom animation tokens
-│   └── main.jsx            # React root mount
+│   │   ├── AddResource.jsx     # Resource contribution form
+│   │   ├── Browse.jsx          # Search, filter & paginated browse
+│   │   ├── Home.jsx            # Landing page with syllabus overview
+│   │   ├── Login.jsx           # Sign-in page
+│   │   ├── Profile.jsx         # User dashboard (submissions, bookmarks, reviews)
+│   │   ├── ResourceDetail.jsx  # Detail view, rating form, share & creator controls
+│   │   └── Signup.jsx          # Registration page
+│   ├── App.jsx                 # Root router & shell layout
+│   ├── index.css               # Tailwind v4 theme & animation tokens
+│   └── main.jsx                # React root mount
 ├── supabase/
-│   └── schema.sql          # Full PostgreSQL DDL, RLS policies, views & seed data
-├── .env.example            # Supabase credentials template
-├── package.json
-└── vite.config.js
+│   └── schema.sql              # Full PostgreSQL DDL, RLS policies, views & seed data
+├── .env.example                # Environment variable template
+├── LICENSE
+└── package.json
 ```
 
 ---
 
 ## Getting Started
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Sanchit07-dev/asd-major-project.git
-   cd asd-major-project
-   ```
+### Prerequisites
 
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
+- Node.js ≥ 18
+- A [Supabase](https://supabase.com) project
 
-3. **Configure environment variables:**
-   ```bash
-   cp .env.example .env.local
-   ```
-   Provide your Supabase credentials:
-   ```env
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
+### Installation
 
-4. **Initialize Database:**
-   Run the SQL scripts in `supabase/schema.sql` inside your Supabase project's SQL Editor.
+```bash
+# 1. Clone the repo
+git clone https://github.com/Sanchit07-dev/asd-major-project.git
+cd asd-major-project
 
-5. **Start Development Server:**
-   ```bash
-   npm run dev
-   ```
-   Open [http://localhost:5173](http://localhost:5173) in your browser.
+# 2. Install dependencies
+npm install
+
+# 3. Configure environment variables
+cp .env.example .env.local
+```
+
+Open `.env.local` and fill in your Supabase credentials:
+
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key
+```
+
+```bash
+# 4. Initialise the database
+#    Run supabase/schema.sql in your Supabase project's SQL Editor.
+
+# 5. Start the development server
+npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+### Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run preview` | Preview the production build locally |
+| `npm run lint` | Run Oxlint |
+| `node scripts/supabase_test.js` | Standalone Supabase connection test |
+
+---
+
+## Database Architecture
+
+The platform uses a zero-trust Row Level Security (RLS) model in PostgreSQL.
+
+| Table / View | Description |
+|---|---|
+| `profiles` | User info synced from `auth.users` via DB trigger |
+| `subjects` | Academic subjects tagged by semester (1–8) |
+| `topics` | Sub-topics linked to subjects |
+| `resources` | Learning materials contributed by authenticated students |
+| `reviews` | Ratings + comments; unique per `(resource_id, user_id)` |
+| `bookmarks` | Saved resources; unique per `(user_id, resource_id)` |
+| `resource_stats` | View: live avg rating & review count per resource |
+
+---
+
+## Live Demo
+
+> 🚀 **[Add your live demo URL here once deployed]**
+
+---
+
+## Contributing
+
+Pull requests are welcome. Please open an issue first to discuss what you'd like to change.
+
+---
+
+## License
+
+[MIT](./LICENSE)
